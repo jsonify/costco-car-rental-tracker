@@ -1,0 +1,89 @@
+# Project Structure
+```
+costco-car-rental/
+├── src/
+│   ├── app/                    # Next.js app router structure
+│   │   ├── api/               # API routes
+│   │   │   ├── bookings/     # Booking-related endpoints
+│   │   │   └── prices/       # Price-related endpoints
+│   │   ├── bookings/         # Booking pages
+│   │   └── page.tsx          # Main dashboard page
+│   ├── components/           # React components
+│   │   ├── ui/              # Reusable UI components
+│   │   ├── bookings/        # Booking-related components
+│   │   └── charts/          # Price chart components
+│   ├── lib/                 # Utility functions and shared logic
+│   │   ├── supabase/       # Supabase client and types
+│   │   ├── constants.ts    # Shared constants
+│   │   └── utils.ts        # Helper functions
+│   └── types/              # TypeScript type definitions
+├── supabase/              # Supabase configurations
+│   └── migrations/        # Database migrations
+├── scripts/              # Automation scripts
+│   └── price-checker/    # Price checking logic
+├── public/              # Static assets
+└── tests/              # Test files
+```
+
+# Database Schema (Supabase)
+
+```sql
+-- Bookings table
+create table bookings (
+  id uuid default uuid_generate_v4() primary key,
+  location varchar not null,
+  location_full_name varchar not null,
+  pickup_date date not null,
+  dropoff_date date not null,
+  pickup_time time not null,
+  dropoff_time time not null,
+  focus_category varchar not null,
+  holding_price decimal(10,2),
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+-- Price history table
+create table price_history (
+  id uuid default uuid_generate_v4() primary key,
+  booking_id uuid references bookings(id),
+  prices jsonb not null,
+  lowest_price_category varchar not null,
+  lowest_price decimal(10,2) not null,
+  created_at timestamp with time zone default now()
+);
+
+-- Create indexes
+create index bookings_location_idx on bookings(location);
+create index price_history_booking_id_idx on price_history(booking_id);
+create index price_history_created_at_idx on price_history(created_at);
+```
+
+# Key Changes from Python Version
+
+1. **Frontend**: 
+   - Replace dashboard.html with Next.js pages
+   - Move price visualization to client-side React components
+   - Use SWR for data fetching and real-time updates
+
+2. **Backend**:
+   - Move from file-based storage to Supabase database
+   - Convert Python scripts to TypeScript/Node.js where possible
+   - Keep Selenium scripts in Python for price checking
+   - Use Vercel Cron for scheduling instead of GitHub Actions
+
+3. **Price Checking**:
+   - Move to serverless functions where possible
+   - Keep core Selenium logic in Python
+   - Use Supabase for data storage instead of JSON files
+   - Implement queue system for multiple bookings
+
+4. **Authentication**:
+   - Add Supabase Auth for user management
+   - Implement row-level security in database
+   - Add user-specific booking views
+
+5. **Email Notifications**:
+   - Use Resend.com for email delivery
+   - Create React Email templates
+   - Move from SMTP to modern email API
