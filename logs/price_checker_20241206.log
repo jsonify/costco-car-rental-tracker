@@ -1,0 +1,18 @@
+2024-12-06 00:59:50,256 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=id "HTTP/2 200 OK"
+2024-12-06 00:59:50,385 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=%2A&id=eq.4cc30765-2e1b-41ed-819b-47f5c7c01480 "HTTP/2 200 OK"
+2024-12-06 01:00:06,118 - ERROR - Error checking prices for booking 4cc30765-2e1b-41ed-819b-47f5c7c01480: Message: Cannot locate option with value: 12:00:00; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+
+2024-12-06 01:00:06,119 - INFO - ✅ Price checking completed
+2024-12-06 01:05:18,066 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=id "HTTP/2 200 OK"
+2024-12-06 01:05:18,188 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=%2A&id=eq.4cc30765-2e1b-41ed-819b-47f5c7c01480 "HTTP/2 200 OK"
+2024-12-06 01:05:23,494 - ERROR - Error checking prices for booking 4cc30765-2e1b-41ed-819b-47f5c7c01480: 'PriceChecker' object has no attribute '_fill_search_form'
+2024-12-06 01:05:23,495 - INFO - ✅ Price checking completed
+2024-12-06 01:06:46,375 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=id "HTTP/2 200 OK"
+2024-12-06 01:06:46,453 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=%2A&id=eq.4cc30765-2e1b-41ed-819b-47f5c7c01480 "HTTP/2 200 OK"
+2024-12-06 01:06:55,222 - ERROR - Error checking prices for booking 4cc30765-2e1b-41ed-819b-47f5c7c01480: Message: Could not locate element with visible text: 12:00 PM; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+
+2024-12-06 01:06:55,223 - INFO - ✅ Price checking completed
+2024-12-06 01:11:32,795 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=id "HTTP/2 200 OK"
+2024-12-06 01:11:32,941 - INFO - HTTP Request: GET https://gbutylpsnakuqpwqboxk.supabase.co//rest/v1/bookings?select=%2A&id=eq.4cc30765-2e1b-41ed-819b-47f5c7c01480 "HTTP/2 200 OK"
+2024-12-06 01:11:43,036 - ERROR - Error checking prices for booking 4cc30765-2e1b-41ed-819b-47f5c7c01480: 'PriceChecker' object has no attribute 'fill_search_form'
+2024-12-06 01:11:43,037 - INFO - ✅ Price checking completed

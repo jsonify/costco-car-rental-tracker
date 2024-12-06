@@ -1,0 +1,19 @@
+# requirements.txt
+
+# Selenium for web automation
+selenium>=4.16.0
+
+# Supabase client
+supabase>=2.3.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Async support
+aiohttp>=3.9.0
+
+# Date handling
+python-dateutil>=2.8.2
+
+# Logging and utilities
+loguru>=0.7.0
