@@ -1,19 +1,14 @@
 // src/lib/supabase/client.ts
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-})
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Database types
 export type CarCategory = 
@@ -50,12 +45,4 @@ export interface PriceHistory {
   lowest_price_category: string
   lowest_price: number
   created_at: string
-}
-
-// Type for price checking results
-export interface PriceCheckResult {
-  success: boolean
-  prices?: Record<string, number>
-  error?: string
-  timestamp: string
 }
