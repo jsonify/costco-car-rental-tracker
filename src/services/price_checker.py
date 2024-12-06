@@ -119,164 +119,341 @@ class PriceChecker:
     
     def setup_driver(self) -> webdriver.Chrome:
         """Set up Chrome WebDriver with proper configuration"""
-        options = webdriver.ChromeOptions()
-        options.binary_location = self.config.chrome_binary
-        
-        # Add stealth settings
-        options.add_argument('--disable-blink-features=AutomationControlled')
-        options.add_argument('--disable-infobars')
-        options.add_experimental_option('useAutomationExtension', False)
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        
-        # Headless mode settings
-        options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        
-        service = Service(
-            executable_path=self.config.chromedriver_path
-        )
-        
-        driver = webdriver.Chrome(service=service, options=options)
-        
-        # Additional stealth measures
-        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-            "userAgent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-        })
-        
-        return driver
-    
+        try:
+            print("\nSetting up Chrome WebDriver...")
+            options = webdriver.ChromeOptions()
+            options.binary_location = self.config.chrome_binary
+            print(f"Chrome binary location: {self.config.chrome_binary}")
+            
+            # Add stealth settings
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument('--disable-infobars')
+            options.add_argument('--window-size=1920,1080')
+            options.add_experimental_option('useAutomationExtension', False)
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            
+            # Headless mode settings
+            options.add_argument('--headless=new')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
+            
+            print(f"ChromeDriver path: {self.config.chromedriver_path}")
+            service = Service(
+                executable_path=self.config.chromedriver_path,
+                service_args=['--verbose']
+            )
+            
+            driver = webdriver.Chrome(service=service, options=options)
+            print("✅ Chrome WebDriver initialized successfully")
+            
+            # Additional stealth measures
+            driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+                "userAgent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+            })
+            
+            return driver
+        except Exception as e:
+            print(f"❌ Error setting up Chrome WebDriver: {str(e)}")
+            raise
+
+    def fill_search_form(self, driver: webdriver.Chrome, booking: Dict) -> None:
+        """Fill out the search form with booking details"""
+        try:
+            # Location input with wait and retry
+            print("Filling location...")
+            location_input = WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.ID, "pickupLocationTextWidget"))
+            )
+            location_input.clear()
+            location_input.send_keys(booking['location'])
+            
+            # Select from dropdown
+            try:
+                print("Selecting from dropdown...")
+                location_item = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, f"//li[contains(text(), '{booking['location']}')]")
+                    )
+                )
+            except:
+                # Try alternative xpath if exact match fails
+                location_item = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, f"//li[contains(., '{booking['location']}')]")
+                    )
+                )
+            location_item.click()
+            time.sleep(1)  # Allow dropdown to close
+            
+            print("Filling dates...")
+            # Dates with explicit format
+            pickup_date = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "pickUpDateWidget"))
+            )
+            dropoff_date = driver.find_element(By.ID, "dropOffDateWidget")
+            
+            # Clear date fields
+            pickup_date.clear()
+            dropoff_date.clear()
+            
+            # Set dates
+            driver.execute_script(f"arguments[0].value = '{booking['pickup_date']}'", pickup_date)
+            driver.execute_script(f"arguments[0].value = '{booking['dropoff_date']}'", dropoff_date)
+            
+            print("Setting times...")
+            # Convert times to Costco format
+            def convert_to_costco_time(time_str: str) -> str:
+                if time_str == "12:00 PM":
+                    return "Noon"
+                elif time_str == "12:00 AM":
+                    return "Midnight"
+                return time_str
+            
+            # Times - Use Costco's format
+            pickup_time_select = Select(WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "pickupTimeWidget"))
+            ))
+            dropoff_time_select = Select(driver.find_element(By.ID, "dropoffTimeWidget"))
+            
+            pickup_options = [opt.text for opt in pickup_time_select.options]
+            print(f"Available pickup times: {pickup_options}")
+            
+            costco_pickup_time = convert_to_costco_time(booking['pickup_time'])
+            costco_dropoff_time = convert_to_costco_time(booking['dropoff_time'])
+            
+            print(f"Selecting pickup time: {costco_pickup_time}")
+            print(f"Selecting dropoff time: {costco_dropoff_time}")
+            
+            pickup_time_select.select_by_visible_text(costco_pickup_time)
+            dropoff_time_select.select_by_visible_text(costco_dropoff_time)
+            
+            print("Checking age checkbox...")
+            age_checkbox = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "driversAgeWidget"))
+            )
+            if not age_checkbox.is_selected():
+                driver.execute_script("arguments[0].click();", age_checkbox)
+            
+            print("Clicking search button...")
+            search_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "findMyCarButton"))
+            )
+            driver.execute_script("arguments[0].click();", search_button)
+            
+            print("Waiting for results...")
+            def check_results(d):
+                return (
+                    "results" in d.current_url.lower() or
+                    "vehicles" in d.current_url.lower()
+                )
+            
+            WebDriverWait(driver, 60).until(check_results)
+            print("Results page loaded")
+            time.sleep(5)  # Allow prices to load
+            
+        except Exception as e:
+            print(f"❌ Error filling search form: {str(e)}")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            os.makedirs('logs', exist_ok=True)
+            driver.save_screenshot(f"logs/error_screenshot_{timestamp}.png")
+            raise
+
     async def check_prices(self, booking_id: str) -> None:
         """Check prices for a specific booking"""
         try:
-            # Get booking details from Supabase
+            print(f"\nChecking prices for booking: {booking_id}")
             result = self.supabase.client.table('bookings').select('*').eq('id', booking_id).execute()
             
             if not result.data:
                 raise Exception(f"Booking {booking_id} not found")
             
             booking = result.data[0]
+            print(f"Found booking: {booking['location']} ({booking['pickup_date']} - {booking['dropoff_date']})")
+            
             driver = self.setup_driver()
             
             try:
                 # Navigate to Costco Travel
+                print("\nNavigating to Costco Travel...")
                 driver.get("https://www.costcotravel.com/Rental-Cars")
+                print("Current URL:", driver.current_url)
+                
+                # Take screenshot before form fill
+                os.makedirs('logs', exist_ok=True)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                driver.save_screenshot(f"logs/before_form_{timestamp}.png")
+                
                 time.sleep(2)  # Allow page to load
+                print("Page loaded, filling search form...")
                 
                 # Fill out the form
                 self.fill_search_form(driver, booking)
+                print("Search form filled")
+                
+                # Take screenshot after search
+                driver.save_screenshot(f"logs/after_search_{timestamp}.png")
                 
                 # Extract prices
                 extractor = PriceExtractor(driver)
                 prices = extractor.extract_prices()
+                print(f"Extracted {len(prices)} prices")
                 
                 # Store prices in Supabase
                 self.supabase.store_prices(booking_id, prices)
                 
+            except Exception as e:
+                print(f"❌ Error during price check: {str(e)}")
+                driver.save_screenshot(f"logs/error_{timestamp}.png")
+                print("\nPage source at time of error:")
+                print(driver.page_source[:500] + "...")  # Print first 500 chars
+                raise
             finally:
+                print("\nClosing Chrome driver...")
                 driver.quit()
                 
         except Exception as e:
             print(f"❌ Error checking prices: {str(e)}")
             raise
-    
-def fill_search_form(self, driver: webdriver.Chrome, booking: Dict) -> None:
-    """Fill out the search form with booking details"""
-    try:
-        # Location input with wait and retry
-        location_input = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, "pickupLocationTextWidget"))
-        )
-        location_input.clear()
-        location_input.send_keys(booking['location'])
-        
-        # Select from dropdown
+    # def fill_search_form(self, driver: webdriver.Chrome, booking: Dict) -> None:
+        """Fill out the search form with booking details"""
         try:
-            location_item = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.XPATH, f"//li[contains(text(), '{booking['location']}')]")
+            # Location input with wait and retry
+            print("Filling location...")
+            location_input = WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.ID, "pickupLocationTextWidget"))
+            )
+            location_input.clear()
+            location_input.send_keys(booking['location'])
+            
+            # Select from dropdown
+            try:
+                print("Selecting from dropdown...")
+                location_item = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, f"//li[contains(text(), '{booking['location']}')]")
+                    )
                 )
-            )
-        except:
-            # Try alternative xpath if exact match fails
-            location_item = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.XPATH, f"//li[contains(., '{booking['location']}')]")
+            except:
+                # Try alternative xpath if exact match fails
+                location_item = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, f"//li[contains(., '{booking['location']}')]")
+                    )
                 )
+            location_item.click()
+            time.sleep(1)  # Allow dropdown to close
+            
+            print("Filling dates...")
+            # Dates with explicit format
+            pickup_date = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "pickUpDateWidget"))
             )
-        location_item.click()
-        time.sleep(1)  # Allow dropdown to close
-        
-        # Dates with explicit format
-        pickup_date = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "pickUpDateWidget"))
-        )
-        dropoff_date = driver.find_element(By.ID, "dropOffDateWidget")
-        
-        # Clear date fields
-        pickup_date.clear()
-        dropoff_date.clear()
-        
-        # Set dates
-        driver.execute_script(f"arguments[0].value = '{booking['pickup_date']}'", pickup_date)
-        driver.execute_script(f"arguments[0].value = '{booking['dropoff_date']}'", dropoff_date)
-        
-        # Convert times to Costco format
-        def convert_to_costco_time(time_str: str) -> str:
-            """Convert standard time to Costco's format"""
-            if time_str == "12:00 PM":
-                return "Noon"
-            elif time_str == "12:00 AM":
-                return "Midnight"
-            return time_str
-        
-        # Times - Use Costco's format
-        pickup_time_select = Select(WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "pickupTimeWidget"))
-        ))
-        dropoff_time_select = Select(driver.find_element(By.ID, "dropoffTimeWidget"))
-        
-        # Get all available time options for debugging
-        pickup_options = [opt.text for opt in pickup_time_select.options]
-        print(f"Available pickup times: {pickup_options}")
-        
-        # Select times using Costco's format
-        costco_pickup_time = convert_to_costco_time(booking['pickup_time'])
-        costco_dropoff_time = convert_to_costco_time(booking['dropoff_time'])
-        
-        print(f"Selecting pickup time: {costco_pickup_time}")
-        print(f"Selecting dropoff time: {costco_dropoff_time}")
-        
-        pickup_time_select.select_by_visible_text(costco_pickup_time)
-        dropoff_time_select.select_by_visible_text(costco_dropoff_time)
-        
-        # Age checkbox
-        age_checkbox = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "driversAgeWidget"))
-        )
-        if not age_checkbox.is_selected():
-            driver.execute_script("arguments[0].click();", age_checkbox)
-        
-        # Click search
-        search_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "findMyCarButton"))
-        )
-        driver.execute_script("arguments[0].click();", search_button)
-        
-        # Wait for results
-        def check_results(d):
-            return (
-                "results" in d.current_url.lower() or
-                "vehicles" in d.current_url.lower()
+            dropoff_date = driver.find_element(By.ID, "dropOffDateWidget")
+            
+            # Clear date fields
+            pickup_date.clear()
+            dropoff_date.clear()
+            
+            # Set dates
+            driver.execute_script(f"arguments[0].value = '{booking['pickup_date']}'", pickup_date)
+            driver.execute_script(f"arguments[0].value = '{booking['dropoff_date']}'", dropoff_date)
+            
+            # Trigger change events
+            driver.execute_script("arguments[0].dispatchEvent(new Event('change'))", pickup_date)
+            driver.execute_script("arguments[0].dispatchEvent(new Event('change'))", dropoff_date)
+            
+            print("Setting times...")
+            # Convert times to Costco format
+            def convert_to_costco_time(time_str: str) -> str:
+                if time_str == "12:00 PM":
+                    return "Noon"
+                elif time_str == "12:00 AM":
+                    return "Midnight"
+                return time_str
+            
+            # Times - Use Costco's format
+            pickup_time_select = Select(WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "pickupTimeWidget"))
+            ))
+            dropoff_time_select = Select(driver.find_element(By.ID, "dropoffTimeWidget"))
+            
+            pickup_options = [opt.text for opt in pickup_time_select.options]
+            print(f"Available pickup times: {pickup_options}")
+            
+            costco_pickup_time = convert_to_costco_time(booking['pickup_time'])
+            costco_dropoff_time = convert_to_costco_time(booking['dropoff_time'])
+            
+            print(f"Selecting pickup time: {costco_pickup_time}")
+            print(f"Selecting dropoff time: {costco_dropoff_time}")
+            
+            pickup_time_select.select_by_visible_text(costco_pickup_time)
+            dropoff_time_select.select_by_visible_text(costco_dropoff_time)
+            
+            print("Checking age checkbox...")
+            age_checkbox = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "driversAgeWidget"))
             )
-        
-        WebDriverWait(driver, 60).until(check_results)
-        time.sleep(5)  # Allow prices to load
-        
-    except Exception as e:
-        print(f"❌ Error filling search form: {str(e)}")
-        # Save screenshot for debugging
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        os.makedirs('logs', exist_ok=True)
-        driver.save_screenshot(f"logs/error_screenshot_{timestamp}.png")
-        raise
+            if not age_checkbox.is_selected():
+                driver.execute_script("arguments[0].click();", age_checkbox)
+            
+            # Take a screenshot before clicking search
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            driver.save_screenshot(f"logs/before_search_{timestamp}.png")
+            
+            print("Clicking search button...")
+            search_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "findMyCarButton"))
+            )
+            driver.execute_script("arguments[0].click();", search_button)
+            
+            print("Waiting for results...")
+            # Wait for either results page or loading indicator
+            def check_results_or_loading(d):
+                try:
+                    current_url = d.current_url.lower()
+                    page_source = d.page_source.lower()
+                    
+                    # Debug logging
+                    print(f"Current URL: {current_url}")
+                    if "searching" in page_source:
+                        print("Found 'searching' text in page")
+                    if "loading" in page_source:
+                        print("Found 'loading' text in page")
+                    
+                    # Take progress screenshot
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    d.save_screenshot(f"logs/waiting_results_{timestamp}.png")
+                    
+                    return (
+                        "results" in current_url or
+                        "vehicles" in current_url or
+                        current_url != "https://www.costcotravel.com/Rental-Cars"
+                    )
+                except Exception as e:
+                    print(f"Error in check_results_or_loading: {str(e)}")
+                    return False
+            
+            # Wait with progress logging
+            start_time = time.time()
+            while time.time() - start_time < 60:  # 60 second timeout
+                if check_results_or_loading(driver):
+                    print("Results page detected!")
+                    break
+                time.sleep(2)
+            else:
+                raise Exception("Timeout waiting for results page")
+            
+            # Final wait for prices to load
+            print("Waiting for prices to load...")
+            time.sleep(5)
+            
+        except Exception as e:
+            print(f"❌ Error filling search form: {str(e)}")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            os.makedirs('logs', exist_ok=True)
+            driver.save_screenshot(f"logs/error_screenshot_{timestamp}.png")
+            # Print the page source
+            print("\nPage source at time of error:")
+            print(driver.page_source[:1000])  # Print first 1000 chars
+            raise
