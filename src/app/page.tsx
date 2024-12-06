@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { DashboardSkeleton } from '@/components/ui/skeleton'
 import BookingCard from '@/components/BookingCard'
 import { withErrorBoundary } from '@/components/error-boundary'
+import AddBookingButton from "@/components/add-booking-button"
 
 function Dashboard() {
   const { data: bookings, loading, error, mutating, refetch } = useBookings()
@@ -42,10 +43,7 @@ function Dashboard() {
               <p className="text-sm text-blue-600">
                 Add your first booking to start tracking car rental prices.
               </p>
-              <Button className="mt-4 w-full flex items-center justify-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add Your First Booking
-              </Button>
+              <AddBookingButton />
             </div>
           </Alert>
         </div>

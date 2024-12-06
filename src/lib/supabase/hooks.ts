@@ -47,46 +47,24 @@ export function useBookings() {
   const addBooking = useCallback(async (newBooking: Omit<Booking, 'id' | 'created_at' | 'updated_at'>) => {
     setState(prev => ({ ...prev, mutating: true, error: null }))
     try {
-      // Optimistically update the UI
-      const optimisticBooking = {
-        ...newBooking,
-        id: `temp-${Date.now()}`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      } as Booking
-
-      setState(prev => ({
-        ...prev,
-        data: prev.data ? [optimisticBooking, ...prev.data] : [optimisticBooking]
-      }))
-
+      console.log('Adding booking:', newBooking) // Debug log
+  
       const { data, error } = await supabase
         .from('bookings')
         .insert([newBooking])
         .select()
         .single()
-
-      if (error) throw error
-
-      // Update with real data
-      setState(prev => ({
-        ...prev,
-        data: prev.data?.map(booking => 
-          booking.id === optimisticBooking.id ? data : booking
-        )
-      }))
-
-      return data
+  
+      if (error) {
+        console.error('Supabase error:', error) // Debug log
+        throw error
+      }
+  
+      console.log('Booking added:', data) // Debug log
+      // ... rest of the function
     } catch (error) {
-      // Revert optimistic update on error
-      setState(prev => ({
-        ...prev,
-        data: prev.data?.filter(booking => !booking.id.startsWith('temp-')),
-        error: error instanceof Error ? error : new Error('Failed to add booking')
-      }))
+      console.error('Error details:', error) // Debug log
       throw error
-    } finally {
-      setState(prev => ({ ...prev, mutating: false }))
     }
   }, [])
 
